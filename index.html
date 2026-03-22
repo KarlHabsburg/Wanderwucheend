@@ -55,7 +55,20 @@
   .anim-fadeLeft.visible,
   .anim-scaleIn.visible  { opacity: 1; transform: none; }
 
-  html { font-size: 16px; -webkit-text-size-adjust: 100%; }
+  html { font-size: 16px; -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+
+  /* ── SCROLL PROGRESS BAR ── */
+  .scroll-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 0%;
+    height: 3px;
+    background: linear-gradient(90deg, var(--gold), #e8c94b, var(--gold));
+    z-index: 9999;
+    transition: width 0.05s linear;
+    box-shadow: 0 0 8px rgba(200,168,75,0.5);
+  }
 
   body {
     background: #2a2e26;
@@ -197,11 +210,62 @@
   }
   .route-strip .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--forest); opacity: 0.5; flex-shrink: 0; }
 
+  @keyframes shimmer {
+    0%   { background-position: -200% center; }
+    100% { background-position: 200% center; }
+  }
+  .route-strip {
+    background-size: 200% auto;
+    background-image: linear-gradient(90deg, #b8962e 0%, var(--gold) 25%, #e8d88a 50%, var(--gold) 75%, #b8962e 100%);
+    animation: shimmer 6s ease-in-out infinite;
+  }
+
   /* ── BODY ── */
   .body { padding: 0 var(--pad) clamp(32px, 8vw, 56px); }
 
   /* ── DAY SECTIONS ── */
-  .day-section { margin-top: clamp(28px, 6vw, 40px); }
+  .day-section {
+    margin-top: clamp(28px, 6vw, 40px);
+    padding: clamp(12px, 3vw, 18px);
+    border-radius: 6px;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+  }
+  .day-section:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 30px rgba(26,58,42,0.12);
+    background: rgba(255,255,255,0.4);
+  }
+
+  /* ── COUNTDOWN ── */
+  .countdown {
+    display: flex;
+    gap: clamp(10px, 3vw, 20px);
+    margin-top: 18px;
+    animation: fadeUp 0.6s 0.55s ease both;
+  }
+  .countdown-item {
+    text-align: center;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(200,168,75,0.25);
+    border-radius: 4px;
+    padding: clamp(6px, 2vw, 10px) clamp(10px, 3vw, 18px);
+    backdrop-filter: blur(4px);
+  }
+  .countdown-val {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(20px, 5vw, 32px);
+    font-weight: 900;
+    color: var(--gold);
+    line-height: 1;
+  }
+  .countdown-lbl {
+    font-size: clamp(7px, 1.8vw, 9px);
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--sage);
+    margin-top: 3px;
+  }
 
   .day-header {
     display: flex;
@@ -597,6 +661,14 @@
     background: var(--gold);
     border-color: var(--gold);
   }
+  .pack-item { cursor: pointer; user-select: none; transition: opacity 0.2s; }
+  .pack-item.checked { opacity: 0.45; text-decoration: line-through; }
+  .pack-item.checked::before {
+    background: var(--sage) !important;
+    border-color: var(--sage) !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Cpolyline points='3,7 6,10 11,4' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important;
+    background-size: contain !important;
+  }
   .pack-note {
     padding: 8px 16px 12px;
     background: var(--snow);
@@ -697,7 +769,7 @@
     font-weight: 700;
     letter-spacing: 2.5px;
     text-transform: uppercase;
-    color: rgba(255,255,255,0.55);
+    color: rgba(255,255,255,0.75);
   }
 
   .footer-right {
@@ -732,6 +804,7 @@
 </style>
 </head>
 <body>
+<div class="scroll-progress" id="scrollProgress"></div>
 <div class="flyer">
 
   <div class="hero">
@@ -753,6 +826,12 @@
           <span class="label">Übernachtig</span>
           <span class="value">Nacht 1: Chesa Dimena · Nacht 2: Chamanna da Grialetsch CAS</span>
         </div>
+      </div>
+      <div class="countdown" id="countdown">
+        <div class="countdown-item"><div class="countdown-val" id="cd-days">--</div><div class="countdown-lbl">Täg</div></div>
+        <div class="countdown-item"><div class="countdown-val" id="cd-hours">--</div><div class="countdown-lbl">Stond</div></div>
+        <div class="countdown-item"><div class="countdown-val" id="cd-mins">--</div><div class="countdown-lbl">Min</div></div>
+        <div class="countdown-item"><div class="countdown-val" id="cd-secs">--</div><div class="countdown-lbl">Sek</div></div>
       </div>
     </div>
   </div>
@@ -1102,10 +1181,10 @@
 </div>
 <script>
   (function() {
+    // Scroll-reveal animations
     var selectors = '.anim-fadeUp, .anim-fadeIn, .anim-fadeLeft, .anim-scaleIn';
     var els = document.querySelectorAll(selectors);
 
-    // Stagger siblings of the same parent
     var seen = new Map();
     els.forEach(function(el) {
       var parent = el.parentElement;
@@ -1126,6 +1205,43 @@
     }, { threshold: 0.12, rootMargin: '0px 0px -30px 0px' });
 
     els.forEach(function(el) { observer.observe(el); });
+
+    // Scroll progress bar
+    var progressBar = document.getElementById('scrollProgress');
+    window.addEventListener('scroll', function() {
+      var scrollTop = window.scrollY;
+      var docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      var progress = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+      progressBar.style.width = progress + '%';
+    }, { passive: true });
+
+    // Countdown to 26 September 2026, 05:42 (departure time)
+    var target = new Date('2026-09-26T05:42:00').getTime();
+    function updateCountdown() {
+      var now = Date.now();
+      var diff = target - now;
+      if (diff <= 0) {
+        document.getElementById('countdown').innerHTML = '<div class="countdown-item"><div class="countdown-val" style="font-size:clamp(14px,3.5vw,18px);">Los goot\'s!</div></div>';
+        return;
+      }
+      var d = Math.floor(diff / 86400000);
+      var h = Math.floor((diff % 86400000) / 3600000);
+      var m = Math.floor((diff % 3600000) / 60000);
+      var s = Math.floor((diff % 60000) / 1000);
+      document.getElementById('cd-days').textContent = d;
+      document.getElementById('cd-hours').textContent = h;
+      document.getElementById('cd-mins').textContent = m;
+      document.getElementById('cd-secs').textContent = s;
+    }
+    updateCountdown();
+    setInterval(updateCountdown, 1000);
+
+    // Interactive packing checklist
+    document.querySelectorAll('.pack-item').forEach(function(item) {
+      item.addEventListener('click', function() {
+        this.classList.toggle('checked');
+      });
+    });
   })();
 </script>
 </body>
