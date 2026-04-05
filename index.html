@@ -10,9 +10,39 @@
 <meta property="og:title" content="Wanderwucheend 2026 – Engadin & Tavau">
 <meta property="og:description" content="3 Täg, 30 km, Grialetsch-Hütta. 26.–28. September 2026.">
 <meta property="og:type" content="website">
+<meta property="og:image" content="https://wanderweekend.marc-borer.ch/og-image.png">
+<meta property="og:url" content="https://wanderweekend.marc-borer.ch">
 <title>Wanderwucheend 2026</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
 <style>
+  /* Self-hosted fonts (GDPR-compliant, offline-capable) */
+  @font-face {
+    font-family: 'Playfair Display';
+    font-style: normal;
+    font-weight: 400 900;
+    font-display: swap;
+    src: url('fonts/playfair-display-latin.woff2') format('woff2');
+  }
+  @font-face {
+    font-family: 'Lato';
+    font-style: normal;
+    font-weight: 300;
+    font-display: swap;
+    src: url('fonts/lato-v300.woff2') format('woff2');
+  }
+  @font-face {
+    font-family: 'Lato';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('fonts/lato-v400.woff2') format('woff2');
+  }
+  @font-face {
+    font-family: 'Lato';
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url('fonts/lato-v700.woff2') format('woff2');
+  }
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
@@ -265,6 +295,29 @@
     text-transform: uppercase;
     color: var(--sage);
     margin-top: 3px;
+  }
+
+  .cal-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 16px;
+    padding: 6px 14px;
+    border: 1.5px solid rgba(200,168,75,0.4);
+    border-radius: 2px;
+    color: var(--gold);
+    font-size: clamp(8px, 2vw, 10px);
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    text-decoration: none;
+    background: rgba(200,168,75,0.08);
+    transition: background 0.2s, border-color 0.2s;
+    animation: fadeUp 0.6s 0.65s ease both;
+  }
+  .cal-link:hover {
+    background: rgba(200,168,75,0.18);
+    border-color: var(--gold);
   }
 
   .day-header {
@@ -584,12 +637,46 @@
     border: 1px solid rgba(61,107,79,0.15);
     border-radius: 3px;
     padding: 10px 12px 6px;
+    position: relative;
   }
   .elevation-profile svg {
     width: 100%;
     height: clamp(44px, 10vw, 60px);
     display: block;
     overflow: visible;
+  }
+  .elevation-overlay {
+    position: absolute;
+    left: 12px; right: 12px;
+    top: 0; bottom: 6px;
+    cursor: crosshair;
+    touch-action: pan-y;
+    z-index: 2;
+  }
+  .elevation-cursor {
+    position: absolute;
+    top: 0; bottom: 0; left: 0;
+    width: 1px;
+    background: var(--forest);
+    opacity: 0;
+    pointer-events: none;
+    will-change: transform, opacity;
+  }
+  .elevation-tooltip {
+    position: absolute;
+    top: -4px; left: 0;
+    transform: translateX(-50%) translateY(-100%);
+    background: var(--forest);
+    color: var(--snow);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 2px;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    letter-spacing: 0.5px;
+    will-change: transform, opacity;
   }
   .elevation-lbl {
     font-size: clamp(7px, 1.6vw, 8px);
@@ -780,6 +867,30 @@
     text-shadow: 0 0 20px rgba(200,168,75,0.35);
   }
 
+  /* ── SHARE BUTTON ── */
+  .share-btn {
+    display: none;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 12px;
+    border: 1px solid rgba(200,168,75,0.35);
+    border-radius: 2px;
+    background: transparent;
+    color: var(--gold);
+    font-family: 'Lato', sans-serif;
+    font-size: clamp(8px, 2vw, 10px);
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .share-btn:hover {
+    background: rgba(200,168,75,0.12);
+    border-color: var(--gold);
+  }
+  .share-btn.visible { display: inline-flex; }
+
   /* ── REDUCED MOTION ── */
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
@@ -833,6 +944,7 @@
         <div class="countdown-item"><div class="countdown-val" id="cd-mins">--</div><div class="countdown-lbl">Min</div></div>
         <div class="countdown-item"><div class="countdown-val" id="cd-secs">--</div><div class="countdown-lbl">Sek</div></div>
       </div>
+      <a class="cal-link" id="calLink" download="wanderwucheend-2026.ics">📅 Zum Kaländer hinzuefüge</a>
     </div>
   </div>
 
@@ -1178,6 +1290,7 @@
 
   <div class="footer">
     <div class="footer-left">Graubünda · Schwiiz</div>
+    <button class="share-btn" id="shareBtn">📤 Tele</button>
     <div class="footer-right">⛰ Onvergässlich. Zäme.</div>
   </div>
 
@@ -1219,7 +1332,7 @@
     }, { passive: true });
 
     // Countdown to 26 September 2026, 05:42 (departure time)
-    var target = new Date('2026-09-26T05:42:00').getTime();
+    var target = new Date('2026-09-26T05:42:00+02:00').getTime();
     function updateCountdown() {
       var now = Date.now();
       var diff = target - now;
@@ -1239,11 +1352,166 @@
     updateCountdown();
     setInterval(updateCountdown, 1000);
 
-    // Interactive packing checklist
-    document.querySelectorAll('.pack-item').forEach(function(item) {
+    // Calendar .ics download
+    var icsContent = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//Wanderwucheend//NONSGML v1.0//EN',
+      'BEGIN:VEVENT',
+      'DTSTART;TZID=Europe/Zurich:20260926T054200',
+      'DTEND;TZID=Europe/Zurich:20260928T170000',
+      'SUMMARY:Wanderwucheend 2026 — Engadin & Tavau',
+      'LOCATION:Graubünden\\, Schweiz',
+      'DESCRIPTION:3 Täg\\, 30 km\\, 2 Nacht in de Alpe.\\n\\n' +
+        'Route: Spinas → La Punt → Grialetsch-Hütta → Tavau Dischma\\n' +
+        'Nacht 1: Chesa Dimena\\, La Punt (B&B)\\n' +
+        'Nacht 2: Chamanna da Grialetsch CAS (Halbpension)\\n\\n' +
+        'Abfahrt: 05:42 ab Breitenbach',
+      'END:VEVENT',
+      'END:VCALENDAR'
+    ].join('\r\n');
+    document.getElementById('calLink').href = 'data:text/calendar;charset=utf-8,' + encodeURIComponent(icsContent);
+
+    // Interactive packing checklist with localStorage persistence
+    var packItems = document.querySelectorAll('.pack-item');
+    var PACK_KEY = 'ww26-packlist';
+
+    // Restore saved state
+    try {
+      var saved = JSON.parse(localStorage.getItem(PACK_KEY) || '{}');
+      packItems.forEach(function(item) {
+        if (saved[item.textContent.trim()]) item.classList.add('checked');
+      });
+    } catch(e) {}
+
+    function savePackState() {
+      var state = {};
+      packItems.forEach(function(item) {
+        if (item.classList.contains('checked')) state[item.textContent.trim()] = true;
+      });
+      localStorage.setItem(PACK_KEY, JSON.stringify(state));
+    }
+
+    packItems.forEach(function(item) {
       item.addEventListener('click', function() {
         this.classList.toggle('checked');
+        savePackState();
       });
+    });
+
+    // Interactive elevation profile tooltips
+    document.querySelectorAll('.elevation-profile').forEach(function(container) {
+      var svg = container.querySelector('svg');
+      if (!svg) return;
+
+      // Parse altitude range from aria-label
+      var label = svg.getAttribute('aria-label') || '';
+      var match = label.match(/(\d+)\s*m\s*bis\s*(\d+)\s*m/);
+      if (!match) return;
+      var startAlt = parseInt(match[1], 10);
+      var endAlt = parseInt(match[2], 10);
+
+      // Parse polyline points
+      var polyline = svg.querySelector('polyline');
+      if (!polyline) return;
+      var raw = polyline.getAttribute('points').trim().split(/\s+/);
+      var pts = raw.map(function(p) {
+        var xy = p.split(',');
+        return { x: parseFloat(xy[0]), y: parseFloat(xy[1]) };
+      });
+
+      var firstY = pts[0].y;
+      var lastY = pts[pts.length - 1].y;
+
+      // Create overlay, cursor, and tooltip
+      var overlay = document.createElement('div');
+      overlay.className = 'elevation-overlay';
+      var cursor = document.createElement('div');
+      cursor.className = 'elevation-cursor';
+      var tooltip = document.createElement('div');
+      tooltip.className = 'elevation-tooltip';
+      overlay.appendChild(cursor);
+      overlay.appendChild(tooltip);
+      container.appendChild(overlay);
+
+      function formatAlt(a) {
+        var rounded = Math.round(a);
+        if (rounded >= 1000) {
+          var thousands = Math.floor(rounded / 1000);
+          var rest = String(rounded % 1000);
+          while (rest.length < 3) rest = '0' + rest;
+          return thousands + '\'' + rest + ' m';
+        }
+        return rounded + ' m';
+      }
+
+      // Cache rect on pointerenter to avoid reflow per move
+      var cachedWidth = 0;
+      var cachedLeft = 0;
+
+      overlay.addEventListener('pointerenter', function() {
+        var rect = overlay.getBoundingClientRect();
+        cachedWidth = rect.width;
+        cachedLeft = rect.left;
+        cursor.style.opacity = '1';
+        tooltip.style.opacity = '1';
+      });
+
+      var rafId = 0;
+      var lastText = '';
+      overlay.addEventListener('pointermove', function(e) {
+        var cx = e.clientX;
+        if (rafId) return;
+        rafId = requestAnimationFrame(function() {
+          rafId = 0;
+          var xFrac = (cx - cachedLeft) / cachedWidth;
+          xFrac = Math.max(0, Math.min(1, xFrac));
+          var svgX = xFrac * 400;
+
+          var i = 0;
+          for (var j = 1; j < pts.length; j++) {
+            if (pts[j].x >= svgX) { i = j - 1; break; }
+            if (j === pts.length - 1) i = j - 1;
+          }
+          var p0 = pts[i], p1 = pts[Math.min(i + 1, pts.length - 1)];
+          var t = (p1.x === p0.x) ? 0 : (svgX - p0.x) / (p1.x - p0.x);
+          var interpY = p0.y + t * (p1.y - p0.y);
+          var alt = startAlt + (endAlt - startAlt) * (interpY - firstY) / (lastY - firstY);
+
+          var px = xFrac * cachedWidth;
+          cursor.style.transform = 'translateX(' + px + 'px)';
+          tooltip.style.transform = 'translateX(' + px + 'px) translateX(-50%) translateY(-100%)';
+          var text = formatAlt(alt);
+          if (text !== lastText) { tooltip.textContent = text; lastText = text; }
+        });
+      });
+
+      overlay.addEventListener('pointerleave', function() {
+        cursor.style.opacity = '0';
+        tooltip.style.opacity = '0';
+      });
+    });
+
+    // Share button (Web Share API with clipboard fallback)
+    var shareBtn = document.getElementById('shareBtn');
+    var canShare = navigator.share || (navigator.clipboard && navigator.clipboard.writeText);
+    if (canShare) shareBtn.classList.add('visible');
+
+    shareBtn.addEventListener('click', function() {
+      var shareData = {
+        title: 'Wanderwucheend 2026 – Engadin & Tavau',
+        text: '3 Täg, 30 km, Grialetsch-Hütta. 26.–28. September 2026.',
+        url: window.location.href
+      };
+      if (navigator.share) {
+        navigator.share(shareData).catch(function() {});
+      } else if (navigator.clipboard) {
+        navigator.clipboard.writeText(window.location.href).then(function() {
+          var orig = shareBtn.textContent;
+          shareBtn.textContent = '✓ Kopiert!';
+          setTimeout(function() { shareBtn.textContent = orig; }, 2000);
+        });
+      }
     });
   })();
 </script>
