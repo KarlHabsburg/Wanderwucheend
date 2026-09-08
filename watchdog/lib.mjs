@@ -18,6 +18,41 @@ export const BADGE_BY_CATEGORY = {
   B: 'bus', S: 's3', IC: 'ic', ICE: 'ic', EC: 'ic', IR: 're', RE: 're', R: 're', EV: 'ev'
 };
 
+// R20 budget guard: two consecutive blind nights open the "Watchdog isch blind"
+// issue, so a single dropped request must not spend one of them.
+// transport.opendata.ch resets the odd connection (undici reports it as the
+// bare "fetch failed" seen on 2026-09-08) and answers normally seconds later —
+// retry those, plus timeouts, 429 and 5xx. A 4xx means we asked wrong: retrying
+// it changes nothing and only burns the rate limit.
+export const FETCH_ATTEMPTS = 3;
+export const backoffMs = (attempt) => Math.min(15000, 2000 * 2 ** (attempt - 1));
+
+export function isRetryable(e) {
+  const status = e && e.httpStatus;
+  if (typeof status === 'number') return status === 408 || status === 429 || status >= 500;
+  const name = String((e && e.name) || '');
+  if (name === 'TimeoutError' || name === 'AbortError') return true;
+  const msg = `${(e && e.message) || e} ${(e && e.cause && e.cause.message) || ''}`;
+  return /fetch failed|network|socket|terminated|ECONNRESET|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN|ENOTFOUND/i.test(msg);
+}
+
+// Retry driver. The attempt, the clock and the log are injected, so this stays
+// I/O-free per the file contract — and testable without a network. Rethrows the
+// last error once the attempts run out: a run that never got an answer still
+// counts as failed.
+export async function withRetry(attempt, { label = 'fetch', attempts = FETCH_ATTEMPTS, sleep, log = () => {} }) {
+  for (let n = 1; ; n++) {
+    try {
+      return await attempt();
+    } catch (e) {
+      if (n >= attempts || !isRetryable(e)) throw e;
+      const wait = backoffMs(n);
+      log(`${label}: ${String((e && e.message) || e).slice(0, 120)} — attempt ${n}/${attempts} failed, retrying in ${wait}ms`);
+      await sleep(wait);
+    }
+  }
+}
+
 // R21: the API response is untrusted. Whitelist exactly the fields we consume,
 // strip control characters, cap string length. Anything unexpected fails closed.
 export function validateApiResponse(json) {

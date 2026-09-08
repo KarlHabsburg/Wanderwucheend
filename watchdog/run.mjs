@@ -7,7 +7,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   validateApiResponse, matchBookedJourney, classifyDiff, applyDebounce,
-  validateState, initialState, toMin
+  validateState, initialState, toMin, withRetry
 } from './lib.mjs';
 import { applyValueRepair, applyStructuralJson, syncDerived, markShareLink, AmbiguousRepairError } from './repair.mjs';
 
@@ -73,22 +73,31 @@ function ensureTrackingIssue(state) {
   return n;
 }
 
-async function fetchConnections(journey) {
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Transient failures are retried in-run (R20): only a request that fails every
+// attempt counts as a blind night. Worst case ~2 min per endpoint — irrelevant
+// for a nightly job, and the whole point is that it rarely gets there.
+function fetchJson(url, label) {
+  return withRetry(async () => {
+    const res = await fetch(url, { signal: AbortSignal.timeout(30000) });
+    if (!res.ok) throw Object.assign(new Error(`http ${res.status}`), { httpStatus: res.status });
+    return res.json();
+  }, { label, sleep, log: (m) => console.error(m) });
+}
+
+function fetchConnections(journey, key) {
   const legs = journey.legs;
   const dep = legs[0].dep;
   const t = Math.max(0, toMin(dep) - 15); // clamp: pre-00:15 departures must not go negative
   const time = `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
   const url = `${API}/connections?from=${legs[0].from.id}&to=${legs[legs.length - 1].to.id}&date=${journey.date}&time=${time}&limit=6`;
-  const res = await fetch(url, { signal: AbortSignal.timeout(30000) });
-  if (!res.ok) throw new Error(`http ${res.status}`);
-  return res.json();
+  return fetchJson(url, key);
 }
 
 async function checkB313(b313) {
   const url = `${API}/stationboard?id=${b313.from.id}&datetime=${b313.date}T13:00&limit=40`;
-  const res = await fetch(url, { signal: AbortSignal.timeout(30000) });
-  if (!res.ok) throw new Error(`stationboard http ${res.status}`);
-  const json = await res.json();
+  const json = await fetchJson(url, 'b313');
   if (!Array.isArray(json.stationboard)) throw new Error('stationboard shape');
   const seen = new Set(
     json.stationboard
@@ -124,7 +133,7 @@ const structuralByJourney = {};
 
 for (const [key, journey] of Object.entries(conn.journeys)) {
   try {
-    const raw = await fetchConnections(journey);
+    const raw = await fetchConnections(journey, key);
     const v = validateApiResponse(raw);
     if (!v.ok) { report.errors.push(`${key}: API-Antwort ungültig (${v.reason})`); runFailed = true; continue; }
     const m = matchBookedJourney(v.connections, journey);
